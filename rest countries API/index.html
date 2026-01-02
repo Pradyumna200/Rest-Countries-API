@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Countries Flags Selector</title>
+  <link rel="icon" href="data:," />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f4f4f4;  
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    #app {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    }
+
+    #status {
+      text-align: center;
+      font-style: italic;
+      margin-bottom: 10px;
+    }
+
+    #searchBox {
+      width: 100%;
+      padding: 8px;
+      font-size: 14px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+
+    #flagsContainer {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .flag-card {
+      background: #fafafa;
+      border-radius: 6px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.1);
+      padding: 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    .flag-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 8px rgba(0,0,0,0.2);
+    }
+
+    .flag-card img {
+      width: 100%;
+      height: 70px;
+      object-fit: cover;
+      border-radius: 4px;
+      margin-bottom: 5px;
+    }
+
+    .flag-card span {
+      font-size: 13px;
+      font-weight: bold;
+      display: block;
+    }
+
+    /* Detail view */
+    #countryDetails {
+      display: none; /* hidden initially */
+    }
+
+    #countryDetailsCard {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    #countryDetails img {
+      max-width: 250px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .detail-text {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .detail-row {
+      margin: 4px 0;
+      font-size: 14px;
+    }
+
+    .detail-row strong {
+      width: 130px;
+      display: inline-block;
+    }
+
+    #backBtn {
+      margin-bottom: 15px;
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      background: #007bff;
+      color: #fff;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Countries Flags Selector</h1>
+
+  <div id="app">
+    <div id="status">Loading countries...</div>
+
+    <!-- FLAG LIST VIEW -->
+    <div id="flagsView">
+      <input
+        type="text"
+        id="searchBox"
+        placeholder="Search country by name..."
+      />
+      <div id="flagsContainer"></div>
+    </div>
+
+    <!-- SINGLE COUNTRY DETAIL VIEW -->
+    <div id="countryDetails">
+      <button id="backBtn">← Back to all countries</button>
+      <div id="countryDetailsCard"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL =
+      "https://restcountries.com/v3.1/all?fields=name,flags,capital,region,subregion,population,cca2,cca3,languages,currencies";
+
+    const statusDiv = document.getElementById("status");
+    const flagsView = document.getElementById("flagsView");
+    const flagsContainer = document.getElementById("flagsContainer");
+    const countryDetails = document.getElementById("countryDetails");
+    const countryDetailsCard = document.getElementById("countryDetailsCard");
+    const searchBox = document.getElementById("searchBox");
+    const backBtn = document.getElementById("backBtn");
+
+    let allCountries = [];
+
+    window.addEventListener("DOMContentLoaded", () => {
+      fetchCountries();
+    });
+
+    async function fetchCountries() {
+      statusDiv.textContent = "Loading countries from API...";
+
+      try {
+        const response = await fetch(API_URL);
+        if (!response.ok) {
+          throw new Error("Network response was not ok: " + response.status);
+        }
+
+        const data = await response.json();
+        allCountries = data;
+
+        statusDiv.textContent =
+          `Showing ${allCountries.length} of ${allCountries.length} countries. ` +
+          "Click any flag to view details.";
+        displayFlags(allCountries);
+      } catch (error) {
+        console.error("Fetch error:", error);
+        statusDiv.textContent = "Error fetching countries: " + error.message;
+        flagsContainer.innerHTML =
+          "<p>Could not load data. Check console (F12) for details.</p>";
+      }
+    }
+
+    function displayFlags(countries) {
+      flagsContainer.innerHTML = "";
+
+      if (!countries || countries.length === 0) {
+        flagsContainer.innerHTML = "<p>No countries found.</p>";
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+
+      countries.forEach(country => {
+        const name = country?.name?.common || "N/A";
+        const flag = country?.flags?.png || "";
+
+        const card = document.createElement("div");
+        card.className = "flag-card";
+
+        const img = document.createElement("img");
+        img.src = flag;
+        img.alt = `Flag of ${name}`;
+        img.loading = "lazy";
+
+        const span = document.createElement("span");
+        span.textContent = name;
+
+        card.appendChild(img);
+        card.appendChild(span);
+
+        card.addEventListener("click", () => {
+          showCountryDetails(country);
+        });
+
+        fragment.appendChild(card);
+      });
+
+      flagsContainer.appendChild(fragment);
+    }
+
+    // Show ONLY the selected country's details
+    function showCountryDetails(country) {
+      // switch view: hide flags, show details
+      flagsView.style.display = "none";
+      countryDetails.style.display = "block";
+
+      const name = country?.name?.common || "N/A";
+      const officialName = country?.name?.official || "N/A";
+      const flag = country?.flags?.png || "";
+      const capital =
+        country.capital && country.capital.length > 0
+          ? country.capital[0]
+          : "N/A";
+      const region = country.region || "N/A";
+      const subregion = country.subregion || "N/A";
+      const population =
+        typeof country.population === "number"
+          ? country.population.toLocaleString()
+          : "N/A";
+      const cca2 = country.cca2 || "";
+      const cca3 = country.cca3 || "";
+
+      let languages = "N/A";
+      if (country.languages && typeof country.languages === "object") {
+        const vals = Object.values(country.languages).filter(Boolean);
+        if (vals.length > 0) languages = vals.join(", ");
+      }
+
+      let currencies = "N/A";
+      if (country.currencies && typeof country.currencies === "object") {
+        const vals = Object.values(country.currencies)
+          .filter(Boolean)
+          .map(c => {
+            const n = c.name || "";
+            const s = c.symbol ? ` (${c.symbol})` : "";
+            return (n + s).trim();
+          })
+          .filter(Boolean);
+        if (vals.length > 0) currencies = vals.join(", ");
+      }
+
+      countryDetailsCard.innerHTML = `
+        <img src="${flag}" alt="Flag of ${name}">
+        <div class="detail-text">
+          <h2>${name}</h2>
+          <div class="detail-row"><strong>Official Name:</strong> ${officialName}</div>
+          <div class="detail-row"><strong>Capital:</strong> ${capital}</div>
+          <div class="detail-row"><strong>Region:</strong> ${region}</div>
+          <div class="detail-row"><strong>Subregion:</strong> ${subregion}</div>
+          <div class="detail-row"><strong>Population:</strong> ${population}</div>
+          <div class="detail-row"><strong>Country Codes:</strong> ${cca2} ${cca3}</div>
+          <div class="detail-row"><strong>Languages:</strong> ${languages}</div>
+          <div class="detail-row"><strong>Currencies:</strong> ${currencies}</div>
+        </div>
+      `;
+    }
+
+    // Back button → go to all flags view again
+    backBtn.addEventListener("click", () => {
+      countryDetails.style.display = "none";
+      flagsView.style.display = "block";
+      searchBox.value = "";
+      statusDiv.textContent =
+        `Showing ${allCountries.length} of ${allCountries.length} countries. ` +
+        "Click any flag to view details.";
+      displayFlags(allCountries);
+    });
+
+    // Live search in flags view
+    searchBox.addEventListener("input", () => {
+      const value = searchBox.value.trim().toLowerCase();
+
+      const filtered = allCountries.filter(country => {
+        const name = country?.name?.common
+          ? country.name.common.toLowerCase()
+          : "";
+        return name.includes(value);
+      });
+
+      statusDiv.textContent =
+        `Showing ${filtered.length} of ${allCountries.length} countries.`;
+      displayFlags(filtered);
+    });
+  </script>
+</body>
+</html>
